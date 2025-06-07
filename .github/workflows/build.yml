@@ -26,7 +26,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfiles
+          file: ./Dockerfile
           push: true
           tags: ${{ vars.DOCKER_USERNAME }}/uploadfileapi:latest
 
