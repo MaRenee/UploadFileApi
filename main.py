@@ -1,21 +1,39 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+import os 
+
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI()
 
-Azure_connection_string = "DefaultEndpointsProtocol=https;AccountName=wemssoftwarestadv;AccountKey=fVJ3jKPEL7EN85Rvc70OMXnckNqMIqfV6ACDWNHbryRalH7krDfesawP8kWt5/Y4NfIv7F6GmrSF+AStvdjhcA==;EndpointSuffix=core.windows.net"
-container_name = "exemple"
+# Read config from environment variables
+Azure_connection_string = os.getenv("Azure_connection_string")
+container_name = os.getenv("container_name")
 
 blob_service_client = BlobServiceClient.from_connection_string(Azure_connection_string)
 
+# Allowed content types
+ALLOWED_CONTENT_TYPES = ["text/csv", "application/json"]
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
+    
+    # Validate file type
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid file type: {file.content_type}. Only CSV and JSON files are allowed."
+        )
     try:
+        contents = await file.read()
+        
         # Upload file to Azure Blob Storage
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=file.filename)
-        contents = await file.read()
         blob_client.upload_blob(contents, overwrite=True)
 
         return {"filename": file.filename, "status": "Uploaded successfully!"}
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
