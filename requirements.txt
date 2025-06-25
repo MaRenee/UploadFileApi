@@ -3,4 +3,8 @@ uvicorn
 azure-storage-blob
 python-multipart
 python-dotenv
-
+azure-identity
+pydantic[email]
+azure-data-tables
+python-jose[cryptography]
+requests

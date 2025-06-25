@@ -10,6 +10,9 @@ COPY . .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Explicitly install pydantic with email support (email-validator)
+RUN pip install --no-cache-dir "pydantic[email]"
+
 # Expose port for the API
 EXPOSE 8000
 
