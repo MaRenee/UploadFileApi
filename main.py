@@ -1,9 +1,13 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import Depends, FastAPI, UploadFile, File, HTTPException
+from helper.authentication import verify_token
 from helper.data_transformer import DataTransformer
 from repository.data_storage_repository import DataStorageRepository
 from repository.file_storage_repository import FileStorageRepository
 from helper.validation import file_validator
+from repository.download_data_repository import download_blob_as_csv
+import os
+
 
 
 
@@ -14,12 +18,29 @@ app = FastAPI()
 fileStorageRepository = FileStorageRepository()
 dataStorageRepository = DataStorageRepository()
 
-@app.get("/")
-async def root():
-    return {"message": "API is running"}
+AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+CONTAINER_NAME = os.getenv("CONTAINER_NAME")
+BLOB_NAME = "emp1.csv"  
+
+@app.get("/download-file")
+def download_file():
+    try:
+        data = download_blob_as_csv(
+            connection_string=AZURE_CONNECTION_STRING,
+            container_name=CONTAINER_NAME,
+            blob_name=BLOB_NAME
+        )
+        return {
+            "status": "success",
+            "count": len(data),
+            "employees": data
+        }
+
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), user: dict = Depends(verify_token)):
 
     try:
         file_validator.validate_file(file)
@@ -33,7 +54,7 @@ async def upload_file(file: UploadFile = File(...)):
     
     
 @app.post("/upload-file")
-async def storage_uploadfile(file: UploadFile = File(...)):
+async def storage_uploadfile(file: UploadFile = File(...), user: dict = Depends(verify_token)):
     
     try:
         extension = file_validator.validate_file(file)
@@ -47,8 +68,8 @@ async def storage_uploadfile(file: UploadFile = File(...)):
         # transform bytes from List of Objects (MyUser)
         users = DataTransformer.parse_data(downloaded_data, extension)
 
-        for user in users:
-            dataStorageRepository.add_user(user)
+        for u in users:
+            dataStorageRepository.add_user(u)
             
         return {
             "filename": file.filename,
@@ -57,4 +78,5 @@ async def storage_uploadfile(file: UploadFile = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Process failed: {str(e)}")
+        
         
