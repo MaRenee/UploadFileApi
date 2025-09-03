@@ -6,6 +6,8 @@ from repository.data_storage_repository import DataStorageRepository
 from repository.file_storage_repository import FileStorageRepository
 from helper.validation import file_validator
 from repository.download_data_repository import download_blob_as_csv
+from fastapi.responses import JSONResponse
+
 import os
 
 
@@ -22,7 +24,7 @@ AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 CONTAINER_NAME = os.getenv("CONTAINER_NAME")
 BLOB_NAME = "emp1.csv"  
 
-@app.get("/download-file")
+@app.get("/download-file", response_class=JSONResponse)
 def download_file():
     try:
         data = download_blob_as_csv(
@@ -30,11 +32,7 @@ def download_file():
             container_name=CONTAINER_NAME,
             blob_name=BLOB_NAME
         )
-        return {
-            "status": "success",
-            "count": len(data),
-            "employees": data
-        }
+        return JSONResponse(content=data)
 
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
